@@ -1,11 +1,13 @@
-import React, {FC, useMemo, useState} from 'react';
+import React, {FC, useLayoutEffect, useMemo, useState} from 'react';
 import './Hello.pcss';
 import Joyride, {STATUS, Step} from 'react-joyride';
 
 type Props = {};
 
+
 export const Hello: FC<Props> = ({}) => {
-    const [run, setRun] = useState(false);
+    const [running, setRunning] = useState<boolean>(false);
+    const [readyStepIndex, setReadyStepIndex] = useState<number | undefined>(undefined);
 
     const steps = useMemo<Step[]>(() => {
         return [
@@ -27,11 +29,23 @@ export const Hello: FC<Props> = ({}) => {
         ]
     }, []);
 
+    const onBeforeStep = (stepIndex: number) => {
+        if (stepIndex === readyStepIndex) return;
+
+        setRunning(false);
+        document.querySelector<HTMLElement>(steps[stepIndex].target as string)?.scrollIntoView();
+        setTimeout(() => {
+            setReadyStepIndex(stepIndex);
+            setRunning(true);
+        })
+    };
+
     return <div>
-        <button onClick={() => setRun(true)}>Guide me ({String(run)})</button>
+        <button onClick={() => setRunning(true)}>Guide me ({String(running)})</button>
         <Joyride
-            run={run}
+            run={running}
             steps={steps}
+            stepIndex={readyStepIndex}
             continuous
             showProgress={true}
             spotlightClicks={false}
@@ -40,8 +54,13 @@ export const Hello: FC<Props> = ({}) => {
             showSkipButton={true}
             callback={(state) => {
                 console.log("### state", state)
+                if (state.type === "step:before") {
+                    onBeforeStep(state.index);
+                    return;
+                }
                 if (([STATUS.FINISHED, STATUS.SKIPPED]).includes(state.status as any)) {
-                    setRun(false);
+                    setRunning(false);
+                    setReadyStepIndex(undefined);
                 }
             }}
 
